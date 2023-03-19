@@ -165,7 +165,7 @@ int main() {
 
     // load models
     // -----------
-    Model ourModel("resources/objects/apple_glb/apple_tree.glb");
+    Model ourModel("resources/objects/apple_tree/apple_tree.obj");
     ourModel.SetShaderTextureNamePrefix("material.");
 
     PointLight& pointLight = programState->pointLight;
@@ -227,7 +227,7 @@ int main() {
                                programState->backpackPosition); // translate it down so it's at the center of the scene
         model = glm::scale(model, glm::vec3(programState->backpackScale));    // it's a bit too big for our scene, so scale it down
         model = glm::rotate(model, currentFrame, glm::vec3(0, 1, 0));
-        model = glm::scale(model, glm::vec3(0.1));
+        model = glm::scale(model, glm::vec3(25));
         ourShader.setMat4("model", model);
         ourModel.Draw(ourShader);
 
