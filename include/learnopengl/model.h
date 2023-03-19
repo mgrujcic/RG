@@ -177,7 +177,6 @@ private:
         textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
 
 
-
         // return a mesh object created from the extracted mesh data
         return Mesh(vertices, indices, textures);
     }
