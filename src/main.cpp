@@ -158,6 +158,7 @@ int main() {
     // configure global opengl state
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // build and compile shaders
     // -------------------------
@@ -165,8 +166,15 @@ int main() {
 
     // load models
     // -----------
-    Model ourModel("resources/objects/apple_tree/apple_tree.obj");
-    ourModel.SetShaderTextureNamePrefix("material.");
+    Model appleTreeModel("resources/objects/apple_tree/apple_tree.obj");
+    appleTreeModel.SetShaderTextureNamePrefix("material.");
+
+    Model grassModel("resources/objects/grass/10450_Rectangular_Grass_Patch_v1_iterations-2.obj");
+    grassModel.SetShaderTextureNamePrefix("material.");
+
+    Model oakTreeModel("resources/objects/tree2/Tree.obj");
+    oakTreeModel.SetShaderTextureNamePrefix("material.");
+
 
     PointLight& pointLight = programState->pointLight;
     pointLight.position = glm::vec3(4.0f, 4.0, 0.0);
@@ -221,15 +229,41 @@ int main() {
         ourShader.setMat4("projection", projection);
         ourShader.setMat4("view", view);
 
-        // render the loaded model
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model,
-                               programState->backpackPosition); // translate it down so it's at the center of the scene
-        model = glm::scale(model, glm::vec3(programState->backpackScale));    // it's a bit too big for our scene, so scale it down
-        model = glm::rotate(model, currentFrame, glm::vec3(0, 1, 0));
-        model = glm::scale(model, glm::vec3(25));
-        ourShader.setMat4("model", model);
-        ourModel.Draw(ourShader);
+        // render appleTreeModel
+        glm::mat4 appleTreeModelMatrix = glm::mat4(1.0f);
+        appleTreeModelMatrix = glm::translate(appleTreeModelMatrix,
+                                              glm::vec3(0, 6.3, -6.5)); // translate the tree so the root is near (0,0,0)
+        appleTreeModelMatrix = glm::scale(appleTreeModelMatrix, glm::vec3(20));
+        ourShader.setMat4("model", appleTreeModelMatrix);
+        appleTreeModel.Draw(ourShader);
+
+        //render grassModel
+        glm::mat4 grassModelMatrix = glm::mat4(1.0f);
+        grassModelMatrix = glm::scale(grassModelMatrix, glm::vec3(0.2));
+        grassModelMatrix = glm::rotate(grassModelMatrix, glm::radians(-90.0f), glm::vec3(1.0, 0.0, 0.0));
+        ourShader.setMat4("model", grassModelMatrix);
+        grassModel.Draw(ourShader);
+
+        // render tree2
+        glm::mat4 tree2ModelMatrix = glm::mat4(1.0f);
+        tree2ModelMatrix = glm::translate(tree2ModelMatrix, glm::vec3(10, 1.5, 15));
+        tree2ModelMatrix = glm::scale(tree2ModelMatrix, glm::vec3(3));
+        ourShader.setMat4("model", tree2ModelMatrix);
+        oakTreeModel.Draw(ourShader);
+
+        tree2ModelMatrix = glm::mat4(1.0f);
+        tree2ModelMatrix = glm::translate(tree2ModelMatrix, glm::vec3(17, 1.5, -2));
+        tree2ModelMatrix = glm::scale(tree2ModelMatrix, glm::vec3(3.5));
+        tree2ModelMatrix = glm::rotate(tree2ModelMatrix, glm::radians(-30.0f) , glm::vec3(0, 1, 0));
+        ourShader.setMat4("model", tree2ModelMatrix);
+        oakTreeModel.Draw(ourShader);
+
+        tree2ModelMatrix = glm::mat4(1.0f);
+        tree2ModelMatrix = glm::translate(tree2ModelMatrix, glm::vec3(20, 1.5, 7));
+        tree2ModelMatrix = glm::scale(tree2ModelMatrix, glm::vec3(2.5));
+        tree2ModelMatrix = glm::rotate(tree2ModelMatrix, glm::radians(30.0f) , glm::vec3(0, 1, 0));
+        ourShader.setMat4("model", tree2ModelMatrix);
+        oakTreeModel.Draw(ourShader);
 
         if (programState->ImGuiEnabled)
             DrawImGui(programState);
@@ -259,14 +293,26 @@ void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
+    int movementKeysPresed = 0;// fix the faster stepping
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        programState->camera.ProcessKeyboard(FORWARD, deltaTime);
+        movementKeysPresed++;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        programState->camera.ProcessKeyboard(BACKWARD, deltaTime);
+        movementKeysPresed++;
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        programState->camera.ProcessKeyboard(LEFT, deltaTime);
+        movementKeysPresed++;
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        programState->camera.ProcessKeyboard(RIGHT, deltaTime);
+        movementKeysPresed++;
+
+
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        programState->camera.ProcessKeyboard(FORWARD, deltaTime, movementKeysPresed);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        programState->camera.ProcessKeyboard(BACKWARD, deltaTime, movementKeysPresed);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        programState->camera.ProcessKeyboard(LEFT, deltaTime, movementKeysPresed);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        programState->camera.ProcessKeyboard(RIGHT, deltaTime, movementKeysPresed);
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -348,3 +394,4 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         }
     }
 }
+

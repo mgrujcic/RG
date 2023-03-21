@@ -48,7 +48,6 @@ public:
             glActiveTexture(GL_TEXTURE0 + i);
             std::string name = textures[i].type;
             std::string number;
-
             if (name == "texture_diffuse") {
                 number = std::to_string(diffuseNr++); // 1
             } else if (name == "texture_specular") {

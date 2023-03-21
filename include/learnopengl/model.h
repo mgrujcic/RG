@@ -188,6 +188,7 @@ private:
         vector<Texture> textures;
         for(unsigned int i = 0; i < mat->GetTextureCount(type); i++)
         {
+
             aiString str;
             mat->GetTexture(type, i, &str);
             // check if texture was loaded before and if so, continue to next iteration: skip loading a new texture
@@ -196,6 +197,7 @@ private:
             {
                 if(std::strcmp(textures_loaded[j].path.data(), str.C_Str()) == 0)
                 {
+                    std::cerr << "Loaded the texture: " << textures_loaded[j].path << std::endl;
                     textures.push_back(textures_loaded[j]);
                     skip = true; // a texture with the same filepath has already been loaded, continue to next one. (optimization)
                     break;
