@@ -8,6 +8,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/random.hpp>
 
 #include <learnopengl/filesystem.h>
 #include <learnopengl/shader.h>
@@ -25,6 +26,8 @@ void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
+
+void placeModel(Shader& ourShader, Model& ourModel, float rotationAngle, glm::vec3 rotationDirection, glm::vec3 scalingVec, glm::vec3 translationVec);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -175,6 +178,11 @@ int main() {
     Model oakTreeModel("resources/objects/tree2/Tree.obj");
     oakTreeModel.SetShaderTextureNamePrefix("material.");
 
+    Model hazelnutBushModel("resources/objects/hazelnut_bush/Hazelnut.obj");
+    hazelnutBushModel.SetShaderTextureNamePrefix("material.");
+
+    Model flower1Model("resources/objects/flower1/marigold.obj");
+    flower1Model.SetShaderTextureNamePrefix("material.");
 
     PointLight& pointLight = programState->pointLight;
     pointLight.position = glm::vec3(4.0f, 4.0, 0.0);
@@ -230,40 +238,33 @@ int main() {
         ourShader.setMat4("view", view);
 
         // render appleTreeModel
-        glm::mat4 appleTreeModelMatrix = glm::mat4(1.0f);
-        appleTreeModelMatrix = glm::translate(appleTreeModelMatrix,
-                                              glm::vec3(0, 6.3, -6.5)); // translate the tree so the root is near (0,0,0)
-        appleTreeModelMatrix = glm::scale(appleTreeModelMatrix, glm::vec3(20));
-        ourShader.setMat4("model", appleTreeModelMatrix);
-        appleTreeModel.Draw(ourShader);
+        placeModel(ourShader, appleTreeModel, 0, glm::vec3(1,0,0), glm::vec3(20), glm::vec3(0, 6.3, -6.5));
 
         //render grassModel
-        glm::mat4 grassModelMatrix = glm::mat4(1.0f);
-        grassModelMatrix = glm::scale(grassModelMatrix, glm::vec3(0.2));
-        grassModelMatrix = glm::rotate(grassModelMatrix, glm::radians(-90.0f), glm::vec3(1.0, 0.0, 0.0));
-        ourShader.setMat4("model", grassModelMatrix);
-        grassModel.Draw(ourShader);
+        placeModel(ourShader, grassModel, -90.0f, glm::vec3(1,0,0), glm::vec3(0.2), glm::vec3(0));
 
-        // render tree2
-        glm::mat4 tree2ModelMatrix = glm::mat4(1.0f);
-        tree2ModelMatrix = glm::translate(tree2ModelMatrix, glm::vec3(10, 1.5, 15));
-        tree2ModelMatrix = glm::scale(tree2ModelMatrix, glm::vec3(3));
-        ourShader.setMat4("model", tree2ModelMatrix);
-        oakTreeModel.Draw(ourShader);
+        //render tree2
+        placeModel(ourShader, oakTreeModel, 0.0f, glm::vec3(0,1,0), glm::vec3(3), glm::vec3(10, 1.5, 15));
+        placeModel(ourShader, oakTreeModel, -30.0f, glm::vec3(0,1,0), glm::vec3(3.5), glm::vec3(17, 1.5, -2));
+        placeModel(ourShader, oakTreeModel, 30.0f, glm::vec3(0,1,0), glm::vec3(2.5), glm::vec3(20, 1.5, 7));
 
-        tree2ModelMatrix = glm::mat4(1.0f);
-        tree2ModelMatrix = glm::translate(tree2ModelMatrix, glm::vec3(17, 1.5, -2));
-        tree2ModelMatrix = glm::scale(tree2ModelMatrix, glm::vec3(3.5));
-        tree2ModelMatrix = glm::rotate(tree2ModelMatrix, glm::radians(-30.0f) , glm::vec3(0, 1, 0));
-        ourShader.setMat4("model", tree2ModelMatrix);
-        oakTreeModel.Draw(ourShader);
+        //render hazelnut
+        placeModel(ourShader, hazelnutBushModel, 0.0f, glm::vec3(0,0,0), glm::vec3(0.7), glm::vec3(-10, 0, -10));
 
-        tree2ModelMatrix = glm::mat4(1.0f);
-        tree2ModelMatrix = glm::translate(tree2ModelMatrix, glm::vec3(20, 1.5, 7));
-        tree2ModelMatrix = glm::scale(tree2ModelMatrix, glm::vec3(2.5));
-        tree2ModelMatrix = glm::rotate(tree2ModelMatrix, glm::radians(30.0f) , glm::vec3(0, 1, 0));
-        ourShader.setMat4("model", tree2ModelMatrix);
-        oakTreeModel.Draw(ourShader);
+        //render flower1
+
+        std::vector<glm::vec3> flower1Coordinates = {
+                glm::vec3(-5, 1.2, 5),
+                glm::vec3(-10, 1.2, 2),
+                glm::vec3(-20, 1.2, -3),
+                glm::vec3(-5, 1.2, -15),
+                glm::vec3(5, 1.2, -12),
+                glm::vec3(-12, 1.2, -5),
+                glm::vec3(6, 1.2, 5),
+                glm::vec3(-5, 1.2, 13)
+        };
+        for(int i = 0; i < flower1Coordinates.size(); i++)
+            placeModel(ourShader, flower1Model, -90.0f, glm::vec3(1, glm::cos((float)i)*0.18,0), glm::vec3(0.06 + 0.015 * glm::sin(i)), flower1Coordinates[i]);
 
         if (programState->ImGuiEnabled)
             DrawImGui(programState);
@@ -395,3 +396,12 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
     }
 }
 
+void placeModel(Shader& ourShader, Model& ourModel, float rotationAngle, glm::vec3 rotationDirection, glm::vec3 scalingVec, glm::vec3 translationVec) {
+    glm::mat4 modelMatrix = glm::mat4(1.0f);
+    modelMatrix = glm::translate(modelMatrix, translationVec);
+    modelMatrix = glm::scale(modelMatrix, scalingVec);
+    if(rotationAngle != 0.0)
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle) , rotationDirection);
+    ourShader.setMat4("model", modelMatrix);
+    ourModel.Draw(ourShader);
+}
