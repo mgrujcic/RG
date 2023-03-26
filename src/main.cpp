@@ -15,6 +15,8 @@
 #include <learnopengl/camera.h>
 #include <learnopengl/model.h>
 
+#include <cubes.h>
+
 #include <iostream>
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
@@ -27,7 +29,10 @@ void processInput(GLFWwindow *window);
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
 
+void placeModel(Shader& ourShader, Model& ourModel, float rotationAngle, glm::vec3 rotationDirection, glm::vec3 scalingVec, glm::vec3 translationVec, int index);
 void placeModel(Shader& ourShader, Model& ourModel, float rotationAngle, glm::vec3 rotationDirection, glm::vec3 scalingVec, glm::vec3 translationVec);
+
+unsigned int loadCubemap(vector<std::string> faces);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -166,7 +171,7 @@ int main() {
     // build and compile shaders
     // -------------------------
     Shader ourShader("resources/shaders/2.model_lighting.vs", "resources/shaders/2.model_lighting.fs");
-
+    Shader skyboxShader("resources/shaders/skybox.vs", "resources/shaders/skybox.fs");
     // load models
     // -----------
     Model appleTreeModel("resources/objects/apple_tree/apple_tree.obj");
@@ -184,6 +189,12 @@ int main() {
     Model flower1Model("resources/objects/flower1/marigold.obj");
     flower1Model.SetShaderTextureNamePrefix("material.");
 
+    Model roseModel("resources/objects/rose/rose.obj");
+    roseModel.SetShaderTextureNamePrefix("material.");
+
+    Model tree3Model("resources/objects/tree3/Tree.obj");
+    roseModel.SetShaderTextureNamePrefix("material.");
+
     PointLight& pointLight = programState->pointLight;
     pointLight.position = glm::vec3(4.0f, 4.0, 0.0);
     pointLight.ambient = glm::vec3(0.1, 0.1, 0.1);
@@ -194,6 +205,29 @@ int main() {
     pointLight.linear = 0.09f;
     pointLight.quadratic = 0.032f;
 
+
+    //skybox setup
+    unsigned int skyboxVAO, skyboxVBO;
+    glGenVertexArrays(1, &skyboxVAO);
+    glGenBuffers(1, &skyboxVBO);
+    glBindVertexArray(skyboxVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+
+
+    vector<std::string> faces {
+        "resources/textures/skybox/bluecloud_ft.jpg",
+        "resources/textures/skybox/bluecloud_bk.jpg",
+        "resources/textures/skybox/bluecloud_up.jpg",
+        "resources/textures/skybox/bluecloud_dn.jpg",
+        "resources/textures/skybox/bluecloud_rt.jpg",
+        "resources/textures/skybox/bluecloud_lf.jpg"
+    };
+    unsigned int skyboxTexture = loadCubemap(faces);
+    skyboxShader.use();
+    skyboxShader.setInt("skybox", 0);
 
 
     // draw in wireframe
@@ -252,7 +286,6 @@ int main() {
         placeModel(ourShader, hazelnutBushModel, 0.0f, glm::vec3(0,0,0), glm::vec3(0.7), glm::vec3(-10, 0, -10));
 
         //render flower1
-
         std::vector<glm::vec3> flower1Coordinates = {
                 glm::vec3(-5, 1.2, 5),
                 glm::vec3(-10, 1.2, 2),
@@ -263,12 +296,51 @@ int main() {
                 glm::vec3(6, 1.2, 5),
                 glm::vec3(-5, 1.2, 13)
         };
-        for(int i = 0; i < flower1Coordinates.size(); i++)
-            placeModel(ourShader, flower1Model, -90.0f, glm::vec3(1, glm::cos((float)i)*0.18,0), glm::vec3(0.06 + 0.015 * glm::sin(i)), flower1Coordinates[i]);
+        for(int i = 0; i < flower1Coordinates.size(); i++) {
+            placeModel(ourShader, flower1Model, -90.0f, glm::vec3(1, glm::cos((float) i) * 0.18, 0),
+                       glm::vec3(0.06 + 0.015 * glm::sin(i)), flower1Coordinates[i], i);
+            placeModel(ourShader, flower1Model, -90.0f, glm::vec3(1, glm::cos((float) i) * 0.18, 0),
+                       glm::vec3(0.06 + 0.015 * glm::sin(i)), glm::vec3 (1.1*flower1Coordinates[i].z, flower1Coordinates[i].y, 1.2*flower1Coordinates[i].x), i);
+        }
+
+        //render roses
+        std::vector<glm::vec3> roseCoordinates = {
+                glm::vec3(-5, 1.2, -5),
+                glm::vec3(-10, 1.2, -2),
+                glm::vec3(20, 1.2, 3),
+                glm::vec3(-5, 1.2, 15),
+                glm::vec3(-5, 1.2, 12),
+                glm::vec3(12, 1.2, 5),
+                glm::vec3(6, 1.2, -5),
+                glm::vec3(5, 1.2, -13),
+                glm::vec3(15, 1.2, -18)
+        };
+        for(int i = 0; i < roseCoordinates.size(); i++){
+            placeModel(ourShader, roseModel, 0, glm::vec3(1, glm::cos((float)i)*0.18,0),
+                       glm::vec3(0.03 + 0.008 * glm::sin(i)), roseCoordinates[i], i);
+            placeModel(ourShader, roseModel, 0, glm::vec3(1, glm::cos((float)i)*0.18,0),
+                       glm::vec3(0.03 + 0.008 * glm::sin(i)), glm::vec3 (1.1*roseCoordinates[i].z, roseCoordinates[i].y, 1.2*roseCoordinates[i].x), i);
+        }
+
+        //render tree3
+        placeModel(ourShader, tree3Model, 0 , glm::vec3(1.0f), glm::vec3(2.7f), glm::vec3(20, 2, -20));
+        placeModel(ourShader, tree3Model, 0 , glm::vec3(1.0f), glm::vec3(2.25f), glm::vec3(12, 2, -16));
+
+        //skybox
+        glDepthFunc(GL_LEQUAL);
+        skyboxShader.use();
+        view = glm::mat4(glm::mat3(programState->camera.GetViewMatrix())); // remove translation from the view matrix
+        skyboxShader.setMat4("view", view);
+        skyboxShader.setMat4("projection", projection);
+        glBindVertexArray(skyboxVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glBindVertexArray(0);
+        glDepthFunc(GL_LESS);
 
         if (programState->ImGuiEnabled)
             DrawImGui(programState);
-
 
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -396,12 +468,52 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
     }
 }
 
-void placeModel(Shader& ourShader, Model& ourModel, float rotationAngle, glm::vec3 rotationDirection, glm::vec3 scalingVec, glm::vec3 translationVec) {
+void placeModel(Shader& ourShader, Model& ourModel, float rotationAngle, glm::vec3 rotationDirection, glm::vec3 scalingVec, glm::vec3 translationVec, int index) {
     glm::mat4 modelMatrix = glm::mat4(1.0f);
     modelMatrix = glm::translate(modelMatrix, translationVec);
     modelMatrix = glm::scale(modelMatrix, scalingVec);
+    if(index != -1)
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(index*14.22f) , glm::vec3(0, 1, 0));
     if(rotationAngle != 0.0)
         modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle) , rotationDirection);
+
     ourShader.setMat4("model", modelMatrix);
     ourModel.Draw(ourShader);
+}
+
+
+void placeModel(Shader& ourShader, Model& ourModel, float rotationAngle, glm::vec3 rotationDirection, glm::vec3 scalingVec, glm::vec3 translationVec) {
+    placeModel(ourShader, ourModel, rotationAngle, rotationDirection, scalingVec, translationVec, -1);
+}
+
+unsigned int loadCubemap(vector<std::string> faces)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    int width, height, nrChannels;
+    for (unsigned int i = 0; i < faces.size(); i++)
+    {
+        unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+        if (data)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                         0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+            );
+            stbi_image_free(data);
+        }
+        else
+        {
+            std::cout << "Cubemap tex failed to load at path: " << faces[i] << std::endl;
+            stbi_image_free(data);
+        }
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return textureID;
 }
