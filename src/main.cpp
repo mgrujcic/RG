@@ -59,6 +59,15 @@ struct PointLight {
     float quadratic;
 };
 
+struct DirLight {
+    glm::vec3 direction;
+
+    glm::vec3 ambient;
+    glm::vec3 diffuse;
+    glm::vec3 specular;
+
+};
+
 struct ProgramState {
     glm::vec3 clearColor = glm::vec3(0);
     bool ImGuiEnabled = false;
@@ -195,6 +204,9 @@ int main() {
     Model tree3Model("resources/objects/tree3/Tree.obj");
     roseModel.SetShaderTextureNamePrefix("material.");
 
+    Model appleBowlModel("resources/objects/Apple/Apple.obj");
+    appleBowlModel.SetShaderTextureNamePrefix("material.");
+
     PointLight& pointLight = programState->pointLight;
     pointLight.position = glm::vec3(4.0f, 4.0, 0.0);
     pointLight.ambient = glm::vec3(0.1, 0.1, 0.1);
@@ -205,6 +217,11 @@ int main() {
     pointLight.linear = 0.09f;
     pointLight.quadratic = 0.032f;
 
+    DirLight dirLight;
+    dirLight.direction = glm::normalize(glm::vec3(0.15, -1, 0.2));
+    dirLight.ambient = glm::vec3(0.45);
+    dirLight.diffuse = glm::vec3(0.6);
+    dirLight.specular = glm::vec3(0.4);
 
     //skybox setup
     unsigned int skyboxVAO, skyboxVBO;
@@ -264,6 +281,12 @@ int main() {
         ourShader.setFloat("pointLight.quadratic", pointLight.quadratic);
         ourShader.setVec3("viewPosition", programState->camera.Position);
         ourShader.setFloat("material.shininess", 32.0f);
+
+        ourShader.setVec3("dirLight.direction", dirLight.direction);
+        ourShader.setVec3("dirLight.ambient", dirLight.ambient);
+        ourShader.setVec3("dirLight.diffuse", dirLight.diffuse);
+        ourShader.setVec3("dirLight.specular", dirLight.specular);
+
         // view/projection transformations
         glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom),
                                                 (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
@@ -323,8 +346,10 @@ int main() {
         }
 
         //render tree3
-        placeModel(ourShader, tree3Model, 0 , glm::vec3(1.0f), glm::vec3(2.7f), glm::vec3(20, 2, -20));
-        placeModel(ourShader, tree3Model, 0 , glm::vec3(1.0f), glm::vec3(2.25f), glm::vec3(12, 2, -16));
+        placeModel(ourShader, tree3Model, 0, glm::vec3(1.0f), glm::vec3(2.7f), glm::vec3(20, 2, -20));
+        placeModel(ourShader, tree3Model, 0, glm::vec3(1.0f), glm::vec3(2.25f), glm::vec3(12, 2, -16));
+
+        placeModel(ourShader, appleBowlModel, 0, glm::vec3(1.0f), glm::vec3(10), glm::vec3(0, 10, 0));
 
         //skybox
         glDepthFunc(GL_LEQUAL);
