@@ -175,6 +175,7 @@ int main() {
     // configure global opengl state
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
+    //glEnable(GL_BLEND); discard blending instead
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // build and compile shaders
@@ -297,8 +298,6 @@ int main() {
         // render appleTreeModel
         placeModel(ourShader, appleTreeModel, 0, glm::vec3(1,0,0), glm::vec3(20), glm::vec3(0, 6.3, -6.5));
 
-        //render grassModel
-        placeModel(ourShader, grassModel, -90.0f, glm::vec3(1,0,0), glm::vec3(0.2), glm::vec3(0));
 
         //render tree2
         placeModel(ourShader, oakTreeModel, 0.0f, glm::vec3(0,1,0), glm::vec3(3), glm::vec3(10, 1.5, 15));
@@ -307,6 +306,11 @@ int main() {
 
         //render hazelnut
         placeModel(ourShader, hazelnutBushModel, 0.0f, glm::vec3(0,0,0), glm::vec3(0.7), glm::vec3(-10, 0, -10));
+
+
+        //render tree3
+        placeModel(ourShader, tree3Model, 0, glm::vec3(1.0f), glm::vec3(2.7f), glm::vec3(20, 2, -20));
+        placeModel(ourShader, tree3Model, 0, glm::vec3(1.0f), glm::vec3(2.25f), glm::vec3(12, 2, -16));
 
         //render flower1
         std::vector<glm::vec3> flower1Coordinates = {
@@ -345,11 +349,15 @@ int main() {
                        glm::vec3(0.03 + 0.008 * glm::sin(i)), glm::vec3 (1.1*roseCoordinates[i].z, roseCoordinates[i].y, 1.2*roseCoordinates[i].x), i);
         }
 
-        //render tree3
-        placeModel(ourShader, tree3Model, 0, glm::vec3(1.0f), glm::vec3(2.7f), glm::vec3(20, 2, -20));
-        placeModel(ourShader, tree3Model, 0, glm::vec3(1.0f), glm::vec3(2.25f), glm::vec3(12, 2, -16));
 
-        placeModel(ourShader, appleBowlModel, 0, glm::vec3(1.0f), glm::vec3(10), glm::vec3(0, 10, 0));
+        //objects that are face culled
+        glEnable(GL_CULL_FACE);
+
+        //render grassModel
+        placeModel(ourShader, grassModel, -90.0f, glm::vec3(1,0,0), glm::vec3(0.2), glm::vec3(0));
+
+        glDisable(GL_CULL_FACE);
+
 
         //skybox
         glDepthFunc(GL_LEQUAL);
