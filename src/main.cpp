@@ -35,8 +35,8 @@ void placeModel(Shader& ourShader, Model& ourModel, float rotationAngle, glm::ve
 unsigned int loadCubemap(vector<std::string> faces);
 
 // settings
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+const unsigned int SCR_WIDTH = 1600;
+const unsigned int SCR_HEIGHT = 900;
 
 // camera
 
@@ -182,6 +182,7 @@ int main() {
     // -------------------------
     Shader ourShader("resources/shaders/2.model_lighting.vs", "resources/shaders/2.model_lighting.fs");
     Shader skyboxShader("resources/shaders/skybox.vs", "resources/shaders/skybox.fs");
+    Shader pointLightShader("resources/shaders/pointlight.vs", "resources/shaders/pointlight.fs");
     // load models
     // -----------
     Model appleTreeModel("resources/objects/apple_tree/apple_tree.obj");
@@ -205,23 +206,23 @@ int main() {
     Model tree3Model("resources/objects/tree3/Tree.obj");
     roseModel.SetShaderTextureNamePrefix("material.");
 
-    Model appleBowlModel("resources/objects/Apple/Apple.obj");
-    appleBowlModel.SetShaderTextureNamePrefix("material.");
+    Model angelModel("resources/objects/Angel/18343_Angel_v1.obj");
+    angelModel.SetShaderTextureNamePrefix("material.");
 
-    PointLight& pointLight = programState->pointLight;
-    pointLight.position = glm::vec3(4.0f, 4.0, 0.0);
+    PointLight pointLight;
+    pointLight.position = glm::vec3(0.0f);
     pointLight.ambient = glm::vec3(0.1, 0.1, 0.1);
-    pointLight.diffuse = glm::vec3(0.6, 0.6, 0.6);
-    pointLight.specular = glm::vec3(1.0, 1.0, 1.0);
+    pointLight.diffuse = glm::vec3(0.75, 0.2, 0.2);
+    pointLight.specular = glm::vec3(1.0, 0.3, 0.3);
 
     pointLight.constant = 1.0f;
-    pointLight.linear = 0.09f;
-    pointLight.quadratic = 0.032f;
+    pointLight.linear = 0.001f;
+    pointLight.quadratic = 0.005f;
 
     DirLight dirLight;
     dirLight.direction = glm::normalize(glm::vec3(0.15, -1, 0.2));
-    dirLight.ambient = glm::vec3(0.45);
-    dirLight.diffuse = glm::vec3(0.6);
+    dirLight.ambient = glm::vec3(0.35);
+    dirLight.diffuse = glm::vec3(0.5);
     dirLight.specular = glm::vec3(0.4);
 
     //skybox setup
@@ -244,26 +245,57 @@ int main() {
         "resources/textures/skybox/bluecloud_lf.jpg"
     };
     unsigned int skyboxTexture = loadCubemap(faces);
+
+    vector<std::string> facesFOM {
+            "resources/textures/skybox/browncloud_ft.jpg",
+            "resources/textures/skybox/browncloud_bk.jpg",
+            "resources/textures/skybox/browncloud_up.jpg",
+            "resources/textures/skybox/browncloud_dn.jpg",
+            "resources/textures/skybox/browncloud_rt.jpg",
+            "resources/textures/skybox/browncloud_lf.jpg"
+    };
+    unsigned int skyboxTextureFOM = loadCubemap(facesFOM);
+
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
+    skyboxShader.setInt("skyboxFOM", 1);
+    skyboxShader.setFloat("coef", 0.0f);
 
+    /*
+    //box
+    unsigned int boxVAO, boxVBO;
+    glGenVertexArrays(1, &boxVAO);
+    glGenBuffers(1, &boxVBO);
+    glBindVertexArray(boxVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, boxVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), &cubeVertices, GL_DYNAMIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) (3*sizeof(float)) );
+    */
 
     // draw in wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     // render loop
     // -----------
+    bool fallOfMan = false;
+    float timeOfFall = glfwGetTime();
     while (!glfwWindowShouldClose(window)) {
         // per-frame time logic
         // --------------------
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
-
         // input
         // -----
         processInput(window);
-
+        if(!fallOfMan && programState->camera.Position.x * programState->camera.Position.x + programState->camera.Position.z * programState->camera.Position.z < 25.0f){
+            fallOfMan = true;
+            timeOfFall = currentFrame;
+            cerr << "fall of man\n";
+        }
 
         // render
         // ------
@@ -272,7 +304,9 @@ int main() {
 
         // don't forget to enable shader before setting uniforms
         ourShader.use();
-        pointLight.position = glm::vec3(4.0 * cos(currentFrame), 4.0f, 4.0 * sin(currentFrame));
+        auto pointLightPositionSeed = (fallOfMan ? timeOfFall : currentFrame);
+        pointLight.position = glm::vec3(7.0f*glm::sin(2*pointLightPositionSeed), 15.0f, 7.0*glm::cos(2*pointLightPositionSeed));
+
         ourShader.setVec3("pointLight.position", pointLight.position);
         ourShader.setVec3("pointLight.ambient", pointLight.ambient);
         ourShader.setVec3("pointLight.diffuse", pointLight.diffuse);
@@ -358,19 +392,53 @@ int main() {
 
         glDisable(GL_CULL_FACE);
 
+        //point light source
+        pointLightShader.use();
+        pointLightShader.setMat4("projection", projection);
+        pointLightShader.setMat4("view", view);
 
+        glm::mat4 modelMatrix = glm::mat4(1.0);
+        modelMatrix = glm::translate(modelMatrix, pointLight.position);
+        modelMatrix = glm::scale(modelMatrix, glm::vec3(0.3));
+        modelMatrix = glm::rotate(modelMatrix, 4*currentFrame + (fallOfMan ? 10 * (currentFrame-timeOfFall) : 0.0f), glm::vec3(0, 1, 0));
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(-90.f), glm::vec3(1, 0, 0));
+
+        pointLightShader.setMat4("model", modelMatrix);
+        angelModel.Draw(pointLightShader);
+    /*  source of light is a box, angel instead
+
+        glm::mat4 modelMatrix = glm::mat4(1.0);
+        modelMatrix = glm::translate(modelMatrix, pointLight.position);
+        modelMatrix = glm::scale(modelMatrix, glm::vec3(0.3));
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(10.0f), glm::vec3((float)glm::linearRand(0.45, 0.55)));
+
+        pointLightShader.setMat4("model", modelMatrix);
+        glBindVertexArray(boxVAO);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+    */
         //skybox
         glDepthFunc(GL_LEQUAL);
         skyboxShader.use();
         view = glm::mat4(glm::mat3(programState->camera.GetViewMatrix())); // remove translation from the view matrix
         skyboxShader.setMat4("view", view);
         skyboxShader.setMat4("projection", projection);
+
+        float coef = 0.0f;
+
+        if(fallOfMan)
+            coef = (currentFrame-timeOfFall < 7.0f ? (currentFrame-timeOfFall)/7.0f : 1.0f);
+
+        skyboxShader.setFloat("coef", coef);
+
         glBindVertexArray(skyboxVAO);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTextureFOM);
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glBindVertexArray(0);
         glDepthFunc(GL_LESS);
+
 
         if (programState->ImGuiEnabled)
             DrawImGui(programState);
