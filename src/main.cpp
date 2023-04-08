@@ -334,11 +334,11 @@ int main() {
             spotLight.position = pointLight.position;
             spotLight.direction = glm::normalize(programState->camera.Position - spotLight.position);
             spotLight.diffuse = glm::vec3(1.0f, 0.0f, 0.0f);
-            spotLight.specular = glm::vec3(0.4f, 0.0f, 0.0f);
+            spotLight.specular = glm::vec3(1.0f, 0.0f, 0.0f);
 
-            dirLight.ambient = glm::vec3(0.25) * (1.0f-(5.0f/7.0f)*coef);
-            dirLight.diffuse = glm::vec3(0.4) * (1.0f-(5.0f/7.0f)*coef);
-            dirLight.specular = glm::vec3(0.4) * (1.0f-(5.0f/7.0f)*coef);
+            dirLight.ambient = glm::vec3(0.25) * (1.0f-(4.0f/7.0f)*coef);
+            dirLight.diffuse = glm::vec3(0.4) * (1.0f-(4.0f/7.0f)*coef);
+            dirLight.specular = glm::vec3(0.4) * (1.0f-(4.0f/7.0f)*coef);
 
         }
         std::cerr << pointLight.position.x << " " << pointLight.position.y << " " << pointLight.position.z << "\n";
@@ -351,7 +351,7 @@ int main() {
         ourShader.setFloat("pointLight.linear", pointLight.linear);
         ourShader.setFloat("pointLight.quadratic", pointLight.quadratic);
         ourShader.setVec3("viewPosition", programState->camera.Position);
-        ourShader.setFloat("material.shininess", 32.0f);
+        ourShader.setFloat("material.shininess", 16.0f);
 
         ourShader.setVec3("dirLight.direction", dirLight.direction);
         ourShader.setVec3("dirLight.ambient", dirLight.ambient);
@@ -409,6 +409,7 @@ int main() {
         }
 
         //render roses
+        ourShader.setFloat("material.shininess", 64.0f);
         std::vector<glm::vec3> roseCoordinates = {
                 glm::vec3(-5, 1.2, -5),
                 glm::vec3(-10, 1.2, -2),
@@ -426,7 +427,7 @@ int main() {
             placeModel(ourShader, roseModel, 0, glm::vec3(1, glm::cos((float)i)*0.18,0),
                        glm::vec3(0.03 + 0.008 * glm::sin(i)), glm::vec3 (1.1*roseCoordinates[i].z, roseCoordinates[i].y, 1.2*roseCoordinates[i].x), i);
         }
-
+        ourShader.setFloat("material.shininess", 16.0f);
 
         //objects that are face culled
         glEnable(GL_CULL_FACE);
