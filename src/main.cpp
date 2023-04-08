@@ -35,7 +35,7 @@ void placeModel(Shader& ourShader, Model& ourModel, float rotationAngle, glm::ve
 unsigned int loadCubemap(vector<std::string> faces);
 
 // settings
-const unsigned int SCR_WIDTH = 1600;
+const unsigned int SCR_WIDTH = 1200;
 const unsigned int SCR_HEIGHT = 900;
 
 // camera
@@ -65,6 +65,17 @@ struct DirLight {
     glm::vec3 ambient;
     glm::vec3 diffuse;
     glm::vec3 specular;
+
+};
+
+struct SpotLight {
+    glm::vec3 position;
+    glm::vec3 direction;
+    glm::vec3 ambient;
+    glm::vec3 diffuse;
+    glm::vec3 specular;
+    float cutOff;
+    float outerCutOff;
 
 };
 
@@ -221,10 +232,18 @@ int main() {
 
     DirLight dirLight;
     dirLight.direction = glm::normalize(glm::vec3(0.15, -1, 0.2));
-    dirLight.ambient = glm::vec3(0.35);
-    dirLight.diffuse = glm::vec3(0.5);
+    dirLight.ambient = glm::vec3(0.25);
+    dirLight.diffuse = glm::vec3(0.4);
     dirLight.specular = glm::vec3(0.4);
 
+    SpotLight spotLight;
+    spotLight.position = glm::vec3(0.0f);
+    spotLight.direction = glm::vec3(0.0f, -1.0f, 0.0f);
+    spotLight.ambient = glm::vec3(0.0f);
+    spotLight.diffuse = glm::vec3(0.0f);
+    spotLight.specular = glm::vec3(0.0f);
+    spotLight.cutOff = glm::cos(glm::radians(15.0f));
+    spotLight.outerCutOff = glm::cos(glm::radians(17.2f));
     //skybox setup
     unsigned int skyboxVAO, skyboxVBO;
     glGenVertexArrays(1, &skyboxVAO);
@@ -282,6 +301,7 @@ int main() {
     // -----------
     bool fallOfMan = false;
     float timeOfFall = glfwGetTime();
+    float coef = 0.0f;
     while (!glfwWindowShouldClose(window)) {
         // per-frame time logic
         // --------------------
@@ -307,6 +327,22 @@ int main() {
         auto pointLightPositionSeed = (fallOfMan ? timeOfFall : currentFrame);
         pointLight.position = glm::vec3(7.0f*glm::sin(2*pointLightPositionSeed), 15.0f, 7.0*glm::cos(2*pointLightPositionSeed));
 
+        if(fallOfMan) {
+
+            coef = (currentFrame-timeOfFall < 7.0f ? (currentFrame-timeOfFall)/7.0f : 1.0f);
+
+            spotLight.position = pointLight.position;
+            spotLight.direction = glm::normalize(programState->camera.Position - spotLight.position);
+            spotLight.diffuse = glm::vec3(1.0f, 0.0f, 0.0f);
+            spotLight.specular = glm::vec3(0.4f, 0.0f, 0.0f);
+
+            dirLight.ambient = glm::vec3(0.25) * (1.0f-(5.0f/7.0f)*coef);
+            dirLight.diffuse = glm::vec3(0.4) * (1.0f-(5.0f/7.0f)*coef);
+            dirLight.specular = glm::vec3(0.4) * (1.0f-(5.0f/7.0f)*coef);
+
+        }
+        std::cerr << pointLight.position.x << " " << pointLight.position.y << " " << pointLight.position.z << "\n";
+
         ourShader.setVec3("pointLight.position", pointLight.position);
         ourShader.setVec3("pointLight.ambient", pointLight.ambient);
         ourShader.setVec3("pointLight.diffuse", pointLight.diffuse);
@@ -321,6 +357,14 @@ int main() {
         ourShader.setVec3("dirLight.ambient", dirLight.ambient);
         ourShader.setVec3("dirLight.diffuse", dirLight.diffuse);
         ourShader.setVec3("dirLight.specular", dirLight.specular);
+
+        ourShader.setVec3("spotLight.position", spotLight.position);
+        ourShader.setVec3("spotLight.direction", spotLight.direction);
+        ourShader.setVec3("spotLight.ambient", spotLight.ambient);
+        ourShader.setVec3("spotLight.diffuse", spotLight.diffuse);
+        ourShader.setVec3("spotLight.specular", spotLight.specular);
+        ourShader.setFloat("spotLight.cutOff", spotLight.cutOff);
+        ourShader.setFloat("spotLight.outerCutOff", spotLight.outerCutOff);
 
         // view/projection transformations
         glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom),
@@ -423,10 +467,6 @@ int main() {
         skyboxShader.setMat4("view", view);
         skyboxShader.setMat4("projection", projection);
 
-        float coef = 0.0f;
-
-        if(fallOfMan)
-            coef = (currentFrame-timeOfFall < 7.0f ? (currentFrame-timeOfFall)/7.0f : 1.0f);
 
         skyboxShader.setFloat("coef", coef);
 

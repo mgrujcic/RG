@@ -21,7 +21,6 @@ struct DirLight {
     vec3 specular;
 };
 
-uniform DirLight dirLight;
 
 
 struct Material {
@@ -30,10 +29,28 @@ struct Material {
 
     float shininess;
 };
+
+struct SpotLight {
+    vec3 position;
+    vec3 direction;
+
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+
+    float cutOff;
+    float outerCutOff;
+};
+
+
+
 in vec2 TexCoords;
 in vec3 Normal;
 in vec3 FragPos;
 
+
+uniform DirLight dirLight;
+uniform SpotLight spotLight;
 uniform PointLight pointLight;
 uniform Material material;
 
@@ -71,12 +88,35 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
     vec3 specular = light.specular * spec * vec3(texture(material.texture_specular1, TexCoords));
     return (ambient + diffuse + specular);
 }
+
+vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
+{
+    vec3 lightDir = normalize(light.position - fragPos);
+    // diffuse
+    float diff = max(dot(normal, lightDir), 0.0);
+    // specular shading
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+
+    // spotlight intensity
+    float theta = dot(lightDir, normalize(-light.direction));
+    float epsilon = light.cutOff - light.outerCutOff;
+    float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
+    // combine results
+    vec3 ambient  = intensity * light.ambient  * vec3(texture(material.texture_diffuse1, TexCoords));
+    vec3 diffuse  = intensity * light.diffuse * diff * vec3(texture(material.texture_diffuse1, TexCoords));
+    vec3 specular = intensity * light.specular * spec * vec3(texture(material.texture_specular1, TexCoords));
+
+    return (ambient + diffuse + specular);
+}
+
 void main()
 {
     vec3 normal = normalize(Normal);
     vec3 viewDir = normalize(viewPosition - FragPos);
     vec3 result = CalcDirLight(dirLight, normal, viewDir);
     result += CalcPointLight(pointLight, normal, FragPos, viewDir);
+    result += CalcSpotLight(spotLight, normal, FragPos, viewDir);
     vec4 texColor = texture(material.texture_diffuse1, TexCoords);
     if(texColor.a < 0.1)
             discard;
