@@ -6,8 +6,9 @@ layout (location = 3) in vec3 aTangent;
 layout (location = 4) in vec3 aBitangent;
 
 out vec3 FragPos;
-out vec2 TexCoords;
+out vec2 texCoords;
 out mat3 TBN;
+out mat3 TBNP;
 
 uniform mat4 projection;
 uniform mat4 view;
@@ -16,7 +17,7 @@ uniform mat4 model;
 void main()
 {
     FragPos = vec3(model * vec4(aPos, 1.0));
-    TexCoords = aTexCoords;
+    texCoords = aTexCoords;
 
     mat3 normalMatrix = transpose(inverse(mat3(model)));
     vec3 T = normalize(normalMatrix * aTangent);
@@ -25,5 +26,6 @@ void main()
     vec3 B = cross(N, T);
 
     TBN = mat3(T, B, N);
+    TBNP = transpose(TBN);
     gl_Position = projection * view * model * vec4(aPos, 1.0);
 }

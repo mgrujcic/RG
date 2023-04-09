@@ -130,7 +130,7 @@ void ProgramState::LoadFromFile(std::string filename) {
 }
 
 ProgramState *programState;
-
+bool parallaxMappingToggle = true;
 void DrawImGui(ProgramState *programState);
 
 int main() {
@@ -296,8 +296,7 @@ int main() {
     normalMapShader.setInt("material.texture_diffuse1", 0);
     normalMapShader.setInt("material.texture_specular1", 1);
     normalMapShader.setInt("material.texture_normal", 2);
-
-
+    normalMapShader.setFloat("height_scale", 0.08f);
 
     // draw in wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -456,17 +455,6 @@ int main() {
 
         pointLightShader.setMat4("model", modelMatrix);
         angelModel.Draw(pointLightShader);
-    /*  source of light is a box, angel instead
-
-        glm::mat4 modelMatrix = glm::mat4(1.0);
-        modelMatrix = glm::translate(modelMatrix, pointLight.position);
-        modelMatrix = glm::scale(modelMatrix, glm::vec3(0.3));
-        modelMatrix = glm::rotate(modelMatrix, glm::radians(10.0f), glm::vec3((float)glm::linearRand(0.45, 0.55)));
-
-        pointLightShader.setMat4("model", modelMatrix);
-        glBindVertexArray(boxVAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-    */
 
         //render walls
 
@@ -497,6 +485,8 @@ int main() {
 
         normalMapShader.setMat4("projection", projection);
         normalMapShader.setMat4("view", view);
+
+        normalMapShader.setBool("parallaxMappingToggle", parallaxMappingToggle);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, wallDiffuseMap);
@@ -660,6 +650,9 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         } else {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         }
+    }if(key == GLFW_KEY_P && action == GLFW_PRESS) {
+        parallaxMappingToggle = !parallaxMappingToggle;
+
     }
 }
 

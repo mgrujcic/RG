@@ -44,15 +44,20 @@ struct SpotLight {
 
 
 
-in vec2 TexCoords;
+in vec2 texCoords;
 in vec3 FragPos;
 in mat3 TBN;
+in mat3 TBNP;//inverse
+
+vec2 TexCoords;
 
 
 uniform DirLight dirLight;
 uniform SpotLight spotLight;
 uniform PointLight pointLight;
 uniform Material material;
+uniform float height_scale;
+uniform bool parallaxMappingToggle;
 
 uniform vec3 viewPosition;
 // calculates the color when using a point light.
@@ -109,12 +114,49 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
     return (ambient + diffuse + specular);
 }
 
+vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir){
+    const float minLayers = 8;
+    const float maxLayers = 32;
+    float numLayers = mix(maxLayers, minLayers, abs(dot(vec3(0.0, 0.0, 1.0), viewDir)));
+
+    float layerDepth = 1.0 / numLayers;
+
+    float currentLayerDepth = 0.0;
+
+    vec2 P = viewDir.xy / viewDir.z * height_scale;
+    vec2 deltaTexCoords = P / numLayers;
+
+    vec2 currentTexCoords = texCoords;
+    //loaded the displacement map as the specular texture, used for both because it looks similar
+    //1 - height because its not an inverse displacement map
+    float currentDepthMapValue = 1.0 - texture(material.texture_specular1, currentTexCoords).r;
+
+    while(currentLayerDepth < currentDepthMapValue)
+    {
+        currentTexCoords -= deltaTexCoords;
+        currentDepthMapValue = texture(material.texture_specular1, currentTexCoords).r;
+        currentLayerDepth += layerDepth;
+    }
+
+    return currentTexCoords;
+}
+
 void main()
 {
+    vec3 viewDir = normalize(viewPosition - FragPos);
+    vec3 viewDirTangentSpace = normalize(TBNP * viewDir);
+    if(parallaxMappingToggle) {
+        TexCoords = ParallaxMapping(texCoords,  viewDirTangentSpace);
+    } else {
+        TexCoords = texCoords;
+    }
+
+
     vec3 normal = texture(material.texture_normal, TexCoords).rgb;
     normal = normal * 2.0 - 1.0;
     normal = normalize(TBN * normal);
-    vec3 viewDir = normalize(viewPosition - FragPos);
+
+
     vec3 result = CalcDirLight(dirLight, normal, viewDir);
     result += CalcPointLight(pointLight, normal, FragPos, viewDir);
     result += CalcSpotLight(spotLight, normal, FragPos, viewDir);
