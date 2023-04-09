@@ -114,27 +114,27 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
     return (ambient + diffuse + specular);
 }
 
-vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir){
+vec2 ParallaxMapping(vec2 texCoords, vec3 lViewDir){
     const float minLayers = 8;
     const float maxLayers = 32;
-    float numLayers = mix(maxLayers, minLayers, abs(dot(vec3(0.0, 0.0, 1.0), viewDir)));
+    float numLayers = mix(maxLayers, minLayers, abs(dot(vec3(0.0, 0.0, 1.0), lViewDir)));
 
     float layerDepth = 1.0 / numLayers;
 
     float currentLayerDepth = 0.0;
 
-    vec2 P = viewDir.xy / viewDir.z * height_scale;
+    vec2 P = lViewDir.xy / lViewDir.z * height_scale;
     vec2 deltaTexCoords = P / numLayers;
 
     vec2 currentTexCoords = texCoords;
     //loaded the displacement map as the specular texture, used for both because it looks similar
     //1 - height because its not an inverse displacement map
-    float currentDepthMapValue = 1.0 - texture(material.texture_specular1, currentTexCoords).r;
+    float currentDepthMapValue = 1 - texture(material.texture_specular1, currentTexCoords).r;
 
     while(currentLayerDepth < currentDepthMapValue)
     {
         currentTexCoords -= deltaTexCoords;
-        currentDepthMapValue = texture(material.texture_specular1, currentTexCoords).r;
+        currentDepthMapValue = 1 - texture(material.texture_specular1, currentTexCoords).r; // 1 - here too
         currentLayerDepth += layerDepth;
     }
 
