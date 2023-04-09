@@ -34,6 +34,10 @@ void placeModel(Shader& ourShader, Model& ourModel, float rotationAngle, glm::ve
 
 unsigned int loadCubemap(vector<std::string> faces);
 
+unsigned int loadTexture(char const * path);
+void renderQuad(unsigned int &quadVAO, unsigned int &quadVBO);
+
+
 // settings
 const unsigned int SCR_WIDTH = 1200;
 const unsigned int SCR_HEIGHT = 900;
@@ -187,13 +191,15 @@ int main() {
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
     //glEnable(GL_BLEND); discard blending instead
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // build and compile shaders
     // -------------------------
     Shader ourShader("resources/shaders/2.model_lighting.vs", "resources/shaders/2.model_lighting.fs");
     Shader skyboxShader("resources/shaders/skybox.vs", "resources/shaders/skybox.fs");
     Shader pointLightShader("resources/shaders/pointlight.vs", "resources/shaders/pointlight.fs");
+    Shader normalMapShader("resources/shaders/normal.vs", "resources/shaders/normal.fs");
+
     // load models
     // -----------
     Model appleTreeModel("resources/objects/apple_tree/apple_tree.obj");
@@ -242,8 +248,8 @@ int main() {
     spotLight.ambient = glm::vec3(0.0f);
     spotLight.diffuse = glm::vec3(0.0f);
     spotLight.specular = glm::vec3(0.0f);
-    spotLight.cutOff = glm::cos(glm::radians(15.0f));
-    spotLight.outerCutOff = glm::cos(glm::radians(17.2f));
+    spotLight.cutOff = glm::cos(glm::radians(12.0f));
+    spotLight.outerCutOff = glm::cos(glm::radians(15.0f));
     //skybox setup
     unsigned int skyboxVAO, skyboxVBO;
     glGenVertexArrays(1, &skyboxVAO);
@@ -280,19 +286,18 @@ int main() {
     skyboxShader.setInt("skyboxFOM", 1);
     skyboxShader.setFloat("coef", 0.0f);
 
-    /*
-    //box
-    unsigned int boxVAO, boxVBO;
-    glGenVertexArrays(1, &boxVAO);
-    glGenBuffers(1, &boxVBO);
-    glBindVertexArray(boxVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, boxVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), &cubeVertices, GL_DYNAMIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) (3*sizeof(float)) );
-    */
+    unsigned int wallDiffuseMap = loadTexture(FileSystem::getPath("resources/textures/wood_wall/wall-2-blackforest-DIFFUSE.jpg").c_str());
+    unsigned int wallDisplacementMap = loadTexture(FileSystem::getPath("resources/textures/wood_wall/wall-2-blackforest-DISP.jpg").c_str());
+    unsigned int wallNormalMap  = loadTexture(FileSystem::getPath("resources/textures/wood_wall/wall-2-blackforest-NORM.jpg").c_str());
+
+    unsigned int wallVAO, wallVBO;
+
+    normalMapShader.use();
+    normalMapShader.setInt("material.texture_diffuse1", 0);
+    normalMapShader.setInt("material.texture_specular1", 1);
+    normalMapShader.setInt("material.texture_normal", 2);
+
+
 
     // draw in wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -322,10 +327,9 @@ int main() {
         glClearColor(programState->clearColor.r, programState->clearColor.g, programState->clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // don't forget to enable shader before setting uniforms
-        ourShader.use();
+
         auto pointLightPositionSeed = (fallOfMan ? timeOfFall : currentFrame);
-        pointLight.position = glm::vec3(7.0f*glm::sin(2*pointLightPositionSeed), 15.0f, 7.0*glm::cos(2*pointLightPositionSeed));
+        pointLight.position = glm::vec3(12.0f*glm::sin(1.5*pointLightPositionSeed), 15.0f, 12.0*glm::cos(1.5*pointLightPositionSeed));
 
         if(fallOfMan) {
 
@@ -341,7 +345,9 @@ int main() {
             dirLight.specular = glm::vec3(0.4) * (1.0f-(4.0f/7.0f)*coef);
 
         }
-        std::cerr << pointLight.position.x << " " << pointLight.position.y << " " << pointLight.position.z << "\n";
+
+        // don't forget to enable shader before setting uniforms
+        ourShader.use();
 
         ourShader.setVec3("pointLight.position", pointLight.position);
         ourShader.setVec3("pointLight.ambient", pointLight.ambient);
@@ -461,6 +467,53 @@ int main() {
         glBindVertexArray(boxVAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
     */
+
+        //render walls
+
+        normalMapShader.use();
+
+        normalMapShader.setVec3("pointLight.position", pointLight.position);
+        normalMapShader.setVec3("pointLight.ambient", pointLight.ambient);
+        normalMapShader.setVec3("pointLight.diffuse", pointLight.diffuse);
+        normalMapShader.setVec3("pointLight.specular", pointLight.specular);
+        normalMapShader.setFloat("pointLight.constant", pointLight.constant);
+        normalMapShader.setFloat("pointLight.linear", pointLight.linear);
+        normalMapShader.setFloat("pointLight.quadratic", pointLight.quadratic);
+        normalMapShader.setVec3("viewPosition", programState->camera.Position);
+        normalMapShader.setFloat("material.shininess", 8.0f);
+
+        normalMapShader.setVec3("dirLight.direction", dirLight.direction);
+        normalMapShader.setVec3("dirLight.ambient", dirLight.ambient);
+        normalMapShader.setVec3("dirLight.diffuse", dirLight.diffuse);
+        normalMapShader.setVec3("dirLight.specular", dirLight.specular);
+
+        normalMapShader.setVec3("spotLight.position", spotLight.position);
+        normalMapShader.setVec3("spotLight.direction", spotLight.direction);
+        normalMapShader.setVec3("spotLight.ambient", spotLight.ambient);
+        normalMapShader.setVec3("spotLight.diffuse", spotLight.diffuse);
+        normalMapShader.setVec3("spotLight.specular", spotLight.specular);
+        normalMapShader.setFloat("spotLight.cutOff", spotLight.cutOff);
+        normalMapShader.setFloat("spotLight.outerCutOff", spotLight.outerCutOff);
+
+        normalMapShader.setMat4("projection", projection);
+        normalMapShader.setMat4("view", view);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, wallDiffuseMap);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, wallDisplacementMap);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, wallNormalMap);
+
+
+        for(int i = 0; i < 4; i++){
+            glm::mat4 wallModel = glm::mat4(1.0);
+            wallModel = glm::rotate(wallModel, glm::radians(90.0f * i), glm::vec3(0.0f, 1.0f, 0.0f));
+            wallModel = glm::translate(wallModel, glm::vec3(0.0f, 0.0f, -30.0f));
+            normalMapShader.setMat4("model", wallModel);
+            renderQuad(wallVAO, wallVBO);
+        }
+
         //skybox
         glDepthFunc(GL_LEQUAL);
         skyboxShader.use();
@@ -656,6 +709,131 @@ unsigned int loadCubemap(vector<std::string> faces)
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return textureID;
+}
+
+void renderQuad(unsigned int &quadVAO, unsigned int &quadVBO)
+{
+    if (quadVAO == 0)
+    {
+        // positions
+        glm::vec3 pos1(-30.0f,  8.0f, 0.0f);
+        glm::vec3 pos2(-30.0f, 0.0f, 0.0f);
+        glm::vec3 pos3( 30.0f, 0.0f, 0.0f);
+        glm::vec3 pos4( 30.0f,  8.0f, 0.0f);
+        // texture coordinates
+        glm::vec2 uv1(0.0f, 2.0f);
+        glm::vec2 uv2(0.0f, 0.0f);
+        glm::vec2 uv3(15.0f, 0.0f);
+        glm::vec2 uv4(15.0f, 2.0f);
+        // normal vector
+        glm::vec3 nm(0.0f, 0.0f, 1.0f);
+
+        // calculate tangent/bitangent vectors of both triangles
+        glm::vec3 tangent1, bitangent1;
+        glm::vec3 tangent2, bitangent2;
+        // triangle 1
+        // ----------
+        glm::vec3 edge1 = pos2 - pos1;
+        glm::vec3 edge2 = pos3 - pos1;
+        glm::vec2 deltaUV1 = uv2 - uv1;
+        glm::vec2 deltaUV2 = uv3 - uv1;
+
+        float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+        tangent1.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+        tangent1.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+        tangent1.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+
+        bitangent1.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
+        bitangent1.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
+        bitangent1.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
+
+        // triangle 2
+        // ----------
+        edge1 = pos3 - pos1;
+        edge2 = pos4 - pos1;
+        deltaUV1 = uv3 - uv1;
+        deltaUV2 = uv4 - uv1;
+
+        f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+        tangent2.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+        tangent2.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+        tangent2.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+
+
+        bitangent2.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
+        bitangent2.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
+        bitangent2.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
+
+
+        float quadVertices[] = {
+                // positions            // normal         // texcoords  // tangent                          // bitangent
+                pos1.x, pos1.y, pos1.z, nm.x, nm.y, nm.z, uv1.x, uv1.y, tangent1.x, tangent1.y, tangent1.z, bitangent1.x, bitangent1.y, bitangent1.z,
+                pos2.x, pos2.y, pos2.z, nm.x, nm.y, nm.z, uv2.x, uv2.y, tangent1.x, tangent1.y, tangent1.z, bitangent1.x, bitangent1.y, bitangent1.z,
+                pos3.x, pos3.y, pos3.z, nm.x, nm.y, nm.z, uv3.x, uv3.y, tangent1.x, tangent1.y, tangent1.z, bitangent1.x, bitangent1.y, bitangent1.z,
+
+                pos1.x, pos1.y, pos1.z, nm.x, nm.y, nm.z, uv1.x, uv1.y, tangent2.x, tangent2.y, tangent2.z, bitangent2.x, bitangent2.y, bitangent2.z,
+                pos3.x, pos3.y, pos3.z, nm.x, nm.y, nm.z, uv3.x, uv3.y, tangent2.x, tangent2.y, tangent2.z, bitangent2.x, bitangent2.y, bitangent2.z,
+                pos4.x, pos4.y, pos4.z, nm.x, nm.y, nm.z, uv4.x, uv4.y, tangent2.x, tangent2.y, tangent2.z, bitangent2.x, bitangent2.y, bitangent2.z
+        };
+        // configure plane VAO
+        glGenVertexArrays(1, &quadVAO);
+        glGenBuffers(1, &quadVBO);
+        glBindVertexArray(quadVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(6 * sizeof(float)));
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(8 * sizeof(float)));
+        glEnableVertexAttribArray(4);
+        glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(11 * sizeof(float)));
+    }
+    glBindVertexArray(quadVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
+}
+
+unsigned int loadTexture(char const * path)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+
+    int width, height, nrComponents;
+    unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
+    if (data)
+    {
+        GLenum format;
+        if (nrComponents == 1)
+            format = GL_RED;
+        else if (nrComponents == 3)
+            format = GL_RGB;
+        else if (nrComponents == 4)
+            format = GL_RGBA;
+
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT); // for this tutorial: use GL_CLAMP_TO_EDGE to prevent semi-transparent borders. Due to interpolation it takes texels from next repeat
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        stbi_image_free(data);
+    }
+    else
+    {
+        std::cout << "Texture failed to load at path: " << path << std::endl;
+        stbi_image_free(data);
+    }
 
     return textureID;
 }
